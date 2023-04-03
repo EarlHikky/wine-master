@@ -5,14 +5,12 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from datetime import datetime
 import argparse
 
-
 def main():
     env = Environment(
         loader=FileSystemLoader(''),
         autoescape=select_autoescape(['html', 'xml'])
-        )
+    )
 
-    template = env.get_template('template.html')
     year = datetime.now().year - 1920
     match year % 10:
         case 1:
@@ -22,11 +20,14 @@ def main():
         case _:
             form = "лет"
 
-
     parser = argparse.ArgumentParser(description='Запуск локального сервера')
-    parser.add_argument("path_to_file", help="Путь к файлу")
-    file = parser.parse_args()
-    excel_data_df = pd.read_excel(file.path_to_file, header=None, keep_default_na=False)
+    parser.add_argument("--path_to_file", help="Путь к файлу")
+    args = parser.parse_args()
+    if not args.path_to_file:
+        file = "wine3.xlsx"
+    else:
+        file = args.path_to_file
+    excel_data_df = pd.read_excel(file, header=None, keep_default_na=False)
     list_wines = excel_data_df.values
 
     wines = collections.defaultdict(list)
@@ -35,22 +36,19 @@ def main():
     for item in list_wines[1:]:
         wines[item[0]].append({_param: _item for _param, _item in zip(params, item)})
 
+    template = env.get_template('template.html')
     rendered_page = template.render(
         years=year,
         year_form=form,
         wines=wines,
-        )
+    )
 
     with open('index.html', 'w', encoding="utf8") as file:
         file.write(rendered_page)
 
-    print("Running server..")
+    server = HTTPServer(('0.0.0.0', 8000), SimpleHTTPRequestHandler)
+    server.serve_forever()
 
 
 if __name__ == '__main__':
     main()
-    server = HTTPServer(('0.0.0.0', 8000), SimpleHTTPRequestHandler)
-    print("Server is running. Visit http://127.0.0.1:8000/")
-    server.serve_forever()
-
-
